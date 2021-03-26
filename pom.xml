@@ -11,6 +11,8 @@
     <modules>
         <module>bio</module>
         <module>NIO</module>
+        <module>netty-server</module>
+        <module>netty-client</module>
     </modules>
 
 </project>

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -33,7 +34,7 @@ public class NioServer {
             // 4. 获取Selector
             Selector selector = Selector.open();
 
-            // 5. 将serverSocketChannel注册到Selector
+            // 5. 将serverSocketChannel注册到selector上, 并且设置selector对客户端Accept事件感兴趣
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
             // 6. 循环等待客户端连接
@@ -48,35 +49,53 @@ public class NioServer {
                 Iterator<SelectionKey> it = selectionKeys.iterator();
                 while (it.hasNext()) {
                     SelectionKey selectionKey = it.next();
-                    //根据key对应的通道发生的事件做相应的处理
-
-                    // 如果是OP_ACCEPT事件，则表示有新的客户端连接
-                    if (selectionKey.isAcceptable()) {
-                        // 给客户端生成相应的Channel
-                        SocketChannel socketChannel = serverSocketChannel.accept();
-                        // 将socketChannel设置为非阻塞
-                        socketChannel.configureBlocking(false);
-                        System.out.println("客户端连接成功...生成socketChannel");
-                        // 将当前的socketChannel注册到selector上, 关注事件：读， 同时给socketChannel关联一个Buffer
-                        socketChannel.register(selector, SelectionKey.OP_READ, ByteBuffer.allocate(1024));
-                    }
-                    // 如果是读取事件
-                    if (selectionKey.isReadable()) {
-                        // 通过key反向获取Channel
-                        SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
-                        // 获取该channel关联的buffer
-                        ByteBuffer buffer = (ByteBuffer) selectionKey.attachment();
-
-                        // 把当前channel数据读到buffer里面去
-                        socketChannel.read(buffer);
-                        System.out.println("从客户端读取数据："+new String(buffer.array()));
-                    }
+                    // 基于事件处理的handler
+                    handler(selectionKey);
                     it.remove();
                 }
             }
 
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * 基于事件处理的，根据key对应的通道发生的事件做相应的处理
+     * @param selectionKey
+     * @throws IOException
+     */
+    private static void handler(SelectionKey selectionKey) throws IOException {
+
+
+        if (selectionKey.isAcceptable()) {  // 如果是OP_ACCEPT事件，则表示有新的客户端连接
+            ServerSocketChannel channel = (ServerSocketChannel) selectionKey.channel();
+            // 给客户端生成相应的Channel
+            SocketChannel socketChannel = channel.accept();
+            // 将socketChannel设置为非阻塞
+            socketChannel.configureBlocking(false);
+            System.out.println("客户端连接成功...生成socketChannel");
+            // 将当前的socketChannel注册到selector上, 关注事件：读， 同时给socketChannel关联一个Buffer
+            socketChannel.register(selectionKey.selector(), SelectionKey.OP_READ, ByteBuffer.allocate(1024));
+        } else if (selectionKey.isReadable()) { // 如果是读取事件
+            // 通过key反向获取Channel
+            SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
+            // 获取该channel关联的buffer
+            //ByteBuffer buffer = (ByteBuffer) selectionKey.attachment();
+            ByteBuffer buffer = ByteBuffer.allocate(512);
+
+            // 把当前channel数据读到buffer里面去
+            socketChannel.read(buffer);
+            System.out.println("从客户端读取数据："+new String(buffer.array()));
+
+            //
+            ByteBuffer buffer1 = ByteBuffer.wrap("hello client".getBytes());
+            socketChannel.write(buffer1);
+            selectionKey.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+        } else if (selectionKey.isWritable()){ // 如果是写事件
+            SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
+            System.out.println("写事件");
+            selectionKey.interestOps(SelectionKey.OP_READ);
         }
     }
 }

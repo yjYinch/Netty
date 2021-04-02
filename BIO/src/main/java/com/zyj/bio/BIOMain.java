@@ -1,6 +1,8 @@
 package com.zyj.bio;
 
 import com.zyj.bio.server.BIOServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -14,14 +16,15 @@ import java.net.Socket;
  */
 
 public class BIOMain {
+    private static final Logger logger = LoggerFactory.getLogger(BIOServer.class);
     public static void main(String[] args) {
         ServerSocket serverSocket = null;
         try {
             serverSocket = new ServerSocket();
             serverSocket.bind(new InetSocketAddress(6666));
-            System.out.println("服务器已启动，端口号：6666");
+            logger.info("服务器已启动，端口号：6666");
             while (true){
-                System.out.println("等待客户端连接...");
+                logger.info("等待客户端连接...");
                 // 等待客户端连接，当没有客户端连接时，会阻塞
                 Socket socket = serverSocket.accept();
                 System.out.println("客户端：" + socket.getLocalAddress() + "连接成功");
@@ -32,7 +35,7 @@ public class BIOMain {
             e.printStackTrace();
         } finally {
             if(serverSocket !=null) {
-                System.out.println("服务器关闭了");
+                logger.info("服务器关闭了");
                 try {
                     serverSocket.close();
                 } catch (IOException e) {

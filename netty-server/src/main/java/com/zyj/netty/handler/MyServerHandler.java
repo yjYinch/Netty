@@ -1,16 +1,17 @@
 package com.zyj.netty.handler;
 
-import com.sun.org.slf4j.internal.LoggerFactory;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelPipeline;
 import io.netty.util.CharsetUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author : zhang yijun
@@ -19,47 +20,29 @@ import java.util.logging.Logger;
  */
 
 public class MyServerHandler extends ChannelInboundHandlerAdapter {
-    private static final Logger logger = Logger.getLogger("handler");
+    private static final Logger log = LoggerFactory.getLogger(MyServerHandler.class);
+
+    private static final Map<String, Channel> CHANNEL_MAP = new ConcurrentHashMap<>();
+
+    static {
+        log.info("当前集合：{}", CHANNEL_MAP);
+    }
 
     /**
      * 读取客户端发送的消息
      *
-     * @param ctx
-     * @param msg
+     * @param ctx 当前handler的上下文，用于建立handler与channelPipeline沟通的桥梁
+     * @param msg 客户端消息
      * @throws Exception
      */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ByteBuf byteBuf = (ByteBuf) msg;
+        // 由于解码器已经处理，因此这里面的msg为String类型
+        String message = (String) msg;
 
-        // channel通道
-        Channel channel = ctx.channel();
+        log.info("已收到客户端消息：{}", message);
+        // TODO 业务处理
 
-        // 底层是一个双向链表，涉及到出站和入站问题
-        ChannelPipeline pipeline = channel.pipeline();
-
-        System.out.println("客户端连接地址：" + channel.localAddress() + ", 收到的消息："
-                + byteBuf.toString(CharsetUtil.UTF_8));
-//        ctx.channel().eventLoop().execute(new Runnable() {
-//            @Override
-//            public void run() {
-//                try {
-//                    Thread.sleep(TimeUnit.SECONDS.toMillis(30));
-//                    logger.info("当前线程：" + Thread.currentThread().getName() + "执行任务");
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        });
-
-        ctx.channel().eventLoop().schedule(new Runnable() {
-            @Override
-            public void run() {
-                logger.info("当前线程：" + Thread.currentThread().getName() + "执行定时任务");
-            }
-        }, 5, TimeUnit.SECONDS);
-
-        logger.info("执行完毕");
     }
 
 
@@ -71,12 +54,58 @@ public class MyServerHandler extends ChannelInboundHandlerAdapter {
      */
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-        ctx.channel().writeAndFlush(Unpooled.copiedBuffer("服务器收到了你的消息，并给你发送一个ok", CharsetUtil.UTF_8));
+
+        // 发送消息的第一种方式：写到channel中
+        //ctx.channel().writeAndFlush(Unpooled.copiedBuffer("服务器收到了你的消息，并给你发送一个ok", CharsetUtil.UTF_8));
+
+        // 发送消息的第二种方式：写到channel关联的ChannelHandlerContext中
+        //ctx.writeAndFlush(Unpooled.copiedBuffer("服务器收到了你的消息，并给你发送一个ok", CharsetUtil.UTF_8));
+
+        // 假如给所有客户端发送消息
+        CHANNEL_MAP.forEach((k, channel) -> channel.writeAndFlush(Unpooled.copiedBuffer("ok",  CharsetUtil.UTF_8)));
     }
 
+    /**
+     * 当客户端连接时调用此方法
+     * @param ctx   上下文
+     * @throws Exception
+     */
+    @Override
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        Channel channel = ctx.channel();
+        String channelAddress = channel.localAddress().toString();
+        log.info("客户端{}已连接", channelAddress);
 
+        // 获取channel的唯一标识
+        String channelId = channel.id().asShortText();
+        // 存入map集合
+        CHANNEL_MAP.putIfAbsent(channelId, channel);
+        log.info("channel map = {}", CHANNEL_MAP);
+    }
+
+    /**
+     * 当客户端断开连接时调用此方法，同时删除存储在map中的key
+     * @param ctx
+     * @throws Exception
+     */
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        Channel channel = ctx.channel();
+        String channelId = channel.id().asShortText();
+        log.warn("当前channel已断开连接，id = {}, channel=({})", channelId, channel.toString());
+        CHANNEL_MAP.remove(channelId);
+        log.info("channel map = {}", CHANNEL_MAP);
+    }
+
+    /**
+     * 当系统异常时调用此方法，并且关闭上下文
+     * @param ctx
+     * @param cause
+     * @throws Exception
+     */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        log.error("error, {}", new String(cause.toString().getBytes(StandardCharsets.UTF_8)));
         ctx.close();
     }
 }

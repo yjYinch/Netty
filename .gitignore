@@ -21,6 +21,8 @@ target/
 *.iml
 *.ipr
 
+.gradle
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/

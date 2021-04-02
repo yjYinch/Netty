@@ -11,10 +11,7 @@ import io.netty.util.NettyRuntime;
 
 public class NettyServerMain {
     public static void main(String[] args) {
-        System.out.println(NettyRuntime.availableProcessors());
         NettyServer server = new NettyServer();
         server.run();
-
-
     }
 }

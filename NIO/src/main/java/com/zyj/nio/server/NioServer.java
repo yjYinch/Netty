@@ -1,15 +1,16 @@
 package com.zyj.nio.server;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -19,7 +20,7 @@ import java.util.Set;
  * @description : NIO服务端
  */
 public class NioServer {
-
+    private static final Logger logger = LoggerFactory.getLogger(NioServer.class);
     public static void main(String[] args) {
         try {
             // 1. 创建一个ServerSocketChannel
@@ -40,8 +41,8 @@ public class NioServer {
             // 6. 循环等待客户端连接
             while (true) {
                 // 当没有事件注册到selector时，继续下一次循环
-                if (selector.select(1000) == 0) {
-                    //System.out.println("当前没有事件发生，继续下一次循环");
+                if (selector.select(5000) == 0) {
+                    logger.info("当前没有事件发生，继续下一次循环");
                     continue;
                 }
                 // 获取相关的SelectionKey集合
@@ -66,35 +67,32 @@ public class NioServer {
      * @throws IOException
      */
     private static void handler(SelectionKey selectionKey) throws IOException {
-
-
         if (selectionKey.isAcceptable()) {  // 如果是OP_ACCEPT事件，则表示有新的客户端连接
             ServerSocketChannel channel = (ServerSocketChannel) selectionKey.channel();
             // 给客户端生成相应的Channel
             SocketChannel socketChannel = channel.accept();
             // 将socketChannel设置为非阻塞
             socketChannel.configureBlocking(false);
-            System.out.println("客户端连接成功...生成socketChannel");
+            logger.info("客户端连接成功...socketChannel:{}", socketChannel.toString());
             // 将当前的socketChannel注册到selector上, 关注事件：读， 同时给socketChannel关联一个Buffer
             socketChannel.register(selectionKey.selector(), SelectionKey.OP_READ, ByteBuffer.allocate(1024));
         } else if (selectionKey.isReadable()) { // 如果是读取事件
             // 通过key反向获取Channel
             SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
             // 获取该channel关联的buffer
-            //ByteBuffer buffer = (ByteBuffer) selectionKey.attachment();
             ByteBuffer buffer = ByteBuffer.allocate(512);
 
             // 把当前channel数据读到buffer里面去
             socketChannel.read(buffer);
-            System.out.println("从客户端读取数据："+new String(buffer.array()));
-
+            logger.info("从客户端读取数据：{}", new String(buffer.array()));
             //
             ByteBuffer buffer1 = ByteBuffer.wrap("hello client".getBytes());
             socketChannel.write(buffer1);
             selectionKey.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
         } else if (selectionKey.isWritable()){ // 如果是写事件
             SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
-            System.out.println("写事件");
+            logger.info("当前为写事件...");
+            socketChannel.write(ByteBuffer.wrap("即将发送消息给客户端".getBytes(StandardCharsets.UTF_8)));
             selectionKey.interestOps(SelectionKey.OP_READ);
         }
     }

@@ -1,5 +1,8 @@
 package com.zyj.bio.server;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.net.Socket;
@@ -12,6 +15,7 @@ import java.net.Socket;
 
 public class BIOServer extends Thread{
 
+    private static final Logger logger = LoggerFactory.getLogger(BIOServer.class);
     private Socket socket;
 
     public BIOServer(Socket socket) {
@@ -25,7 +29,7 @@ public class BIOServer extends Thread{
                 BufferedInputStream bufferedInputStream =
                         new BufferedInputStream(socket.getInputStream());
                 byte[] bytes = new byte[1024];
-                System.out.println("等待数据发送...");
+                logger.info("等待数据发送...");
                 // 当没有数据的时候，这个地方会阻塞
                 int read = bufferedInputStream.read(bytes, 0, 1024);
                 String result = new String(bytes, 0, read);

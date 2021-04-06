@@ -81,6 +81,7 @@ public class NioServer {
             SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
             // 获取该channel关联的buffer
             ByteBuffer buffer = ByteBuffer.allocate(512);
+            //ByteBuffer attachment = (ByteBuffer) selectionKey.attachment();
 
             // 把当前channel数据读到buffer里面去
             socketChannel.read(buffer);

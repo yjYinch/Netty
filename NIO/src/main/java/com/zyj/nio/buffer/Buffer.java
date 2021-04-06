@@ -29,6 +29,13 @@ public class Buffer {
             int i = intBuffer.get();
             System.out.println("获取数据："+ i);
         }
-        intBuffer.reset();
+        intBuffer.flip();
+
+        for (int i = 0; i < 4; i++) {
+            intBuffer.put(10);
+        }
+        System.out.println();
+        //intBuffer.clear();
+        //intBuffer.reset();
     }
 }

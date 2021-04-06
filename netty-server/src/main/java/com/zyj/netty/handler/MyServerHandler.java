@@ -10,8 +10,10 @@ import org.slf4j.LoggerFactory;
 
 
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author : zhang yijun
@@ -42,6 +44,43 @@ public class MyServerHandler extends ChannelInboundHandlerAdapter {
 
         log.info("已收到客户端消息：{}", message);
         // TODO 业务处理
+        long star = System.currentTimeMillis();
+        if ("1".equals(msg)) {
+            // 直接execute
+            ctx.channel().eventLoop().execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(TimeUnit.SECONDS.toMillis(10));
+                        log.info("当前线程1：" + Thread.currentThread().getName() + "执行任务");
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        } else {
+            ctx.channel().eventLoop().execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(TimeUnit.SECONDS.toMillis(2));
+                        log.info("当前线程2：" + Thread.currentThread().getName() + "执行任务");
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        }
+
+//        ctx.channel().eventLoop().schedule(new Runnable() {
+//            @Override
+//            public void run() {
+//                log.info("当前线程：" + Thread.currentThread().getName() + "执行定时任务");
+//            }
+//        }, 15, TimeUnit.SECONDS);
+
+        long end = System.currentTimeMillis();
+        System.out.println("消耗时间="+(end-star));
 
     }
 
